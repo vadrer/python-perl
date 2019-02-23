@@ -1,11 +1,15 @@
 pyperl - Perl for Python
 ------------------------
 
-This is a Python extension module that makes it possible to embed Perl
-interpreter(s) in any Python program.  It can be used to invoke
+This is an extension module for Python named `perl` that makes it possible 
+to embed Perl interpreter(s) in any Python program.  It can be used to invoke
 arbitrary Perl code, load any Perl modules and make calls directly
 into Perl functions.  The Perl code invoked can call back into Python
 as it see fit.
+
+Also, this is a `Python::Object` perl module that makes it possible to 
+embed Python in any Python program; it is located in `Python-Object`
+directory of this distribution.
 
 You can select between 2 flavours for how to build the Perl for Python
 extension.  Which flavour to build is selected by the presence (or
@@ -13,7 +17,7 @@ absence) of the `MULTI_PERL` file in this directory.  When `MULTI_PERL` is
 enabled, each python thread will get its own separate perl
 interpreter.  For `-DMULTI_PERL` builds an ithread eanabled perl is
 required.  It means that if you build your own perl you should pass
-the `-Dusethreads` option to 'Configure'.
+the `-Dusethreads` option to `Configure`.
 
 Perl 5.6.0 or better is required.  Python 1.5.2 or better is required.
 
@@ -22,42 +26,37 @@ Python::Object module for Perl.  This allow Perl to access Python
 objects passed in from python calls.  This must be built first, since
 perlmodule.c reference it and want to link with it.
 
-There are also some patches to perl and python itself within the
-patches/ directory that you might want to apply before you build.
-The patches/README file tell you what you get.
-
 Build instructions:
 -------------------
 
-- make sure your PATH is set up so that 'perl' and 'python'
-reference the versions of the language interpreters that you
-want to use.
-
-- If you are using Python-1.5.2, then you need to install
-the Distutils package version 0.9 or better first.
+- make sure your PATH is set up so that `perl` and `python`
+reference the versions of the language interpreters that you want to use.
 
 - Run these commands:
 
-    (cd Python-Object; perl Makefile.PL; make install)
-    python setup.py install
+    - for `perl` python module:
+
+	python setup.py install
+
+    - for `Python::Object` perl module:
+
+	cd Python-Object
+	perl Makefile.PL
+	make install
 
 - You should now be able to run the test.py test script.
 
-    python test.py
+	python test.py
 
+Known to work on Linux i386, Sparc Solaris and MS-Windows.
 
-The Perl for Python extension is known to work on Linux i386, Sparc
-Solaris and MS-Windows.
-
-The API for using perl from python is documented in the perlmodule.pod
+The API for using perl from python is documented in the `perlmodule.pod`
 file.  The file can be converted to other formats with the `pod2*` tools
 that come with perl.
 
 The project home page is <http://www.zope.org/Wikis/zope-perl>.
-Source code releases are made available from
-<ftp://ftp.ActiveState.com/Zope-Perl/>.  Bug reports, suggestions and
-questions about this stuff can be sent to the <zope-perl@zope.org>
-mailing list.
+Source code available at `https://github.com/vadrer/python-perl`.
+Bug reports, suggestions and questions about this stuff are welcome there.
 
 --------------------------------------------------------------------
 (C) 2000-2001 ActiveState.
