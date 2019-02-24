@@ -37,7 +37,6 @@ extern __declspec(dllimport) PyObject * PyObject_Str(PyObject *);
 
 
 extern SV* newPerlPyObject_inc(PyObject *pyo);
-extern MGVTBL vtbl_free_pyo;
 
 static int
 magic_free_pyo(pTHX_ SV *sv, MAGIC *mg)
@@ -53,7 +52,8 @@ magic_free_pyo(pTHX_ SV *sv, MAGIC *mg)
     return 0;
 }
 
-//MGVTBL vtbl_free_pyo = {0, 0, 0, 0, magic_free_pyo};
+extern MGVTBL vtbl_free_pyo;
+/*MGVTBL vtbl_free_pyo = {0, 0, 0, 0, magic_free_pyo};*/
 
 SV*
 newPerlPyObject_noinc(PyObject *pyo)
@@ -74,7 +74,6 @@ newPerlPyObject_noinc(PyObject *pyo)
 	croak("Can't assign magic to Python::Object");
     }
     mg->mg_virtual = &vtbl_free_pyo;
-    printf("pyo=%08X, mg=%08X ->virtual=%08X vtbl...=%08X\n", pyo,  mg , mg->mg_virtual , &vtbl_free_pyo);
     SvREADONLY(sv);
 #ifdef REF_TRACE
     printf("Bind pyo %p\n", pyo);
@@ -109,7 +108,7 @@ PerlPyObject_pyo_or_null(SV* sv)
     if (SvROK(sv) && sv_derived_from(sv, "Python::Object")) {
         sv = SvRV(sv);
         mg = mg_find(sv, '~');
-        if (SvIOK(sv) && mg && mg->mg_virtual == &vtbl_free_pyo) {
+        if (SvIOK(sv) && mg /*&& mg->mg_virtual == &vtbl_free_pyo*/) {
 	    IV ival = SvIV(sv);
 	    return INT2PTR(PyObject *, ival);
         }
@@ -121,21 +120,21 @@ PerlPyObject_pyo_or_null(SV* sv)
 static PyObject*
 PerlPyObject_pyo(SV* sv)
 {
-    //printf("enter PerlPyObject_pyo sv=%08X\n", sv);
     ASSERT_LOCK_PERL;
 
     if (SvROK(sv) && sv_derived_from(sv, "Python::Object")) {
-        sv = SvRV(sv);
-	IV ival = SvIOK(sv) ? SvIV(sv) : 0;
-	MAGIC *mg = mg_find(sv, '~');
-        if (mg && mg->mg_virtual == &vtbl_free_pyo) {
+        SV *sv1 = SvRV(sv);
+	IV ival = SvIOK(sv1) ? SvIV(sv1) : 0;
+	MAGIC *mg = mg_find(sv1, '~');
+        if (mg /*&& mg->mg_virtual == &vtbl_free_pyo*/) { /*TODO comment better*/
 	    if (!ival)
 		croak("Null Python::Object content");
 	    return INT2PTR(PyObject *, ival);
         }
         else {
-	    printf("sv/ival=%08X/%08X mg=%08X ->virtual=%08X vtbl...=%08X\n", 
-		sv, ival, mg , mg->mg_virtual , &vtbl_free_pyo);
+	    /*
+	    printf("sv/sv1/ival=%08X/%08X/%08X mg=%08X ->virtual=%08X vtbl=%08X\n",
+		sv, sv1, ii, mg , mg->mg_virtual , &vtbl_free_pyo); */
             croak("Bad Python::Object content");
 	}
     }
@@ -405,7 +404,7 @@ PyO_transplant(self, donor)
         MAGIC *mg;
         donor = SvRV(donor);
         mg = mg_find(donor, '~');
-	if (SvIOK(donor) && mg && mg->mg_virtual == &vtbl_free_pyo) {
+	if (SvIOK(donor) && mg /*&& mg->mg_virtual == &vtbl_free_pyo*/) {
 	   SV* self_sv = SvRV(self);
 	   sv_setiv(self_sv, SvIV(donor));
            mg->mg_virtual = 0;  /* since sv_unmagic() would call it */
@@ -751,7 +750,6 @@ eval(str,...)
    CODE:
      ENTER_PYTHON;
      if (items > 1) {
-	printf("VK::i am here; ST(1)=%08X\n",ST(1));
 	globals = PerlPyObject_pyo(ST(1));
         if (items > 2) {
 	    locals = PerlPyObject_pyo(ST(2));
@@ -770,8 +768,7 @@ eval(str,...)
      if (!locals)
         locals = globals;
 
-     if (!PyDict_Check(locals) || !PyDict_Check(globals))
-     {
+     if (!PyDict_Check(locals) || !PyDict_Check(globals)) {
 	ENTER_PERL;
 	croak("The 2nd and 3rd argument must be dictionaries");
      }

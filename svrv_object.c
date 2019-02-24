@@ -84,17 +84,16 @@ PySVRV_New(SV* rv)
     dCTXP;
     ASSERT_LOCK_BOTH;
     PySVRV* self = PyObject_NEW(PySVRV, &SVRVtype);
-    printf("self=%08X type=%d\n",self, SVRVtype);
+    //printf("PySVRV_New: self=%08X rv=%08X\n",self, rv);
     if (self == NULL)
 	return NULL;
     self->rv = SvREFCNT_inc(rv);
 #ifdef MULTI_PERL
-	self->owned_by = ctx->perl;
-	ctx->perl->refcnt++;
+    self->owned_by = ctx->perl;
+    ctx->perl->refcnt++;
 #endif
     self->methodname = NULL;
     self->gimme = G_SCALAR;
-    printf("created svrv object %p\n", self);
     return (PyObject*)self;
 }
 
@@ -1236,11 +1235,9 @@ pysvrv_getattr(PySVRV *self, char *name)
 	val = NULL;
     }
     else if (SvOBJECT(SvRV(self->rv))) {
-	PySVRV *method_obj;
-	int len;
 	PERL_LOCK;
-	method_obj = (PySVRV *)PySVRV_New(self->rv);
-	len = strlen(name);
+	PySVRV *method_obj = (PySVRV *)PySVRV_New(self->rv);
+	int len = strlen(name);
 
 	New(999, method_obj->methodname, len+1, char);
 	Copy(name, method_obj->methodname, len+1, char);

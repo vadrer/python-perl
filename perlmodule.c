@@ -59,7 +59,6 @@ new_perl(void)
     perl_parse(p, xs_init, /*5*/3, embedding, NULL);
 #endif
     perl_run(p);
-    //printf("here, new_perl 4\n");
 
 #ifdef WIN32_NOT
     /* Object.dll will have been loaded by Perl now, so resolve its exported
@@ -72,8 +71,6 @@ new_perl(void)
 	printf("GetModuleHandle(\"Object.xs.dll\")=%08X pnewPerlPyObject_inc=%08X\n", m, pnewPerlPyObject_inc);
 	if (m) {
 	    pnewPerlPyObject_inc = (SV* (*)(PyObject *py))GetProcAddress(m, "newPerlPyObject_inc");
-	}
-	else {
 	}
     }
 #endif
@@ -458,12 +455,10 @@ eval(self, args)
     PyObject* res_pyo;
     dCTXP;
 
-    printf("in eval\n"); ///vvv
     main_perl = glob_main_perl;
 
     ASSERT_LOCK_PYTHON;
   
-    printf("in eval1\n"); ///vvv
     if (!PyArg_ParseTuple(args, "s:perl.eval", &code))
 	return NULL;
 
@@ -481,15 +476,12 @@ eval(self, args)
     PERL_LOCK;
 
     if (errsv) {
-	printf(" ...in eval/errsv\n"); ///vvv
 	propagate_errsv();
 	res_pyo = NULL;
     }
     else {
-	printf(" ...in eval/not-errsv\n"); ///vvv
 	res_pyo = sv2pyo(res_sv);
     }
-    printf("in eval28\n"); ///vvv
 
     PYTHON_UNLOCK;
 
@@ -497,7 +489,6 @@ eval(self, args)
     LEAVE;
 
     ENTER_PYTHON;
-    printf("in eval40\n"); ///vvv
     return res_pyo;
 }
 
@@ -788,13 +779,13 @@ static PyMethodDef PerlMethods[] = {
 #if PY_MAJOR_VERSION >= 3
 static int xxx_traverse(PyObject *m, visitproc visit, void *arg) {
     //Py_VISIT(GETSTATE(m)->error);
-    printf("hello, I'm xxx_traverse,\n");
+    //printf("hello, I'm xxx_traverse,\n");
     return 0;
 }
 
 static int xxx_clear(PyObject *m) {
     //Py_CLEAR(GETSTATE(m)->error);
-    printf("hello, I'm xxx_clear,\n");
+    //printf("hello, I'm xxx_clear,\n");
     return 0;
 }
 
@@ -850,7 +841,6 @@ initperl()
     PerlInterpreter *main_perl;
 #endif
 
-    printf("initperl...\n");
     main_perl = perl_alloc();
     perl_construct(main_perl);
     perl_parse(main_perl, xs_init, 4, embedding, NULL);
@@ -884,7 +874,6 @@ initperl()
 #else
     PyDict_SetItemString(d, "MULTI_PERL", PyInt_FromLong(0));
 #endif
-    printf(" ... initperl leave\n");
 }
 
 /* lines of code were copy-pasted hre from Object.xs  {{{ */
@@ -922,7 +911,7 @@ newPerlPyObject_noinc(PyObject *pyo)
 	croak("Can't assign magic to Python::Object");
     }
     mg->mg_virtual = &vtbl_free_pyo;
-    printf("PyO=%08X, MG=%08X ->virtual=%08X vtbl...=%08X\n", pyo,  mg , mg->mg_virtual , &vtbl_free_pyo);
+    //printf("PyO=%08X %08X/%08X, MG=%08X ->virtual=%08X vtbl...=%08X %08X\n", pyo,  rv,sv, mg , mg->mg_virtual , &vtbl_free_pyo);
     SvREADONLY(sv);
 #ifdef REF_TRACE
     printf("Bind pyo %p\n", pyo);
