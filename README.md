@@ -8,7 +8,7 @@ into Perl functions.  The Perl code invoked can call back into Python
 as it see fit.
 
 Also, this is a `Python::Object` perl module that makes it possible to 
-embed Python in any Python program; it is located in `Python-Object`
+embed Python in any Perl program; it is located in `Python-Object`
 directory of this distribution.
 
 You can select between 2 flavours for how to build the Perl for Python
@@ -17,7 +17,7 @@ absence) of the `MULTI_PERL` file in this directory.  When `MULTI_PERL` is
 enabled, each python thread will get its own separate perl
 interpreter.  For `-DMULTI_PERL` builds an ithread eanabled perl is
 required.  It means that if you build your own perl you should pass
-the `-Dusethreads` option to `Configure`.
+the `-Duseithreads` option to `Configure`.
 
 Perl 5.6.0 or better is required.  Python 1.5.2 or better is required.
 
@@ -58,8 +58,10 @@ The project home page is <http://www.zope.org/Wikis/zope-perl>.
 Source code available at `https://github.com/vadrer/python-perl`.
 Bug reports, suggestions and questions about this stuff are welcome there.
 
---------------------------------------------------------------------
+Copyright
+---------
 (C) 2000-2001 ActiveState.
+(C) 2019      Vadim Konovalov
 
 This code is distributed under the same terms as Perl; you can
 redistribute it and/or modify it under the terms of either the GNU
