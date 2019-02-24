@@ -21,11 +21,6 @@ the `-Duseithreads` option to `Configure`.
 
 Perl 5.6.0 or better is required.  Python 1.5.2 or better is required.
 
-Before you can build the Python extension module you should build the
-Python::Object module for Perl.  This allow Perl to access Python
-objects passed in from python calls.  This must be built first, since
-perlmodule.c reference it and want to link with it.
-
 Build instructions:
 -------------------
 
@@ -36,13 +31,15 @@ reference the versions of the language interpreters that you want to use.
 
     - for `perl` python module:
 
-	python setup.py install
+	  `python setup.py install`
 
     - for `Python::Object` perl module:
 
+```
 	cd Python-Object
 	perl Makefile.PL
 	make install
+```
 
 - You should now be able to run the test.py test script.
 
@@ -55,7 +52,7 @@ file.  The file can be converted to other formats with the `pod2*` tools
 that come with perl.
 
 The project home page is <http://www.zope.org/Wikis/zope-perl>.
-Source code available at `https://github.com/vadrer/python-perl`.
+Source code available at <https://github.com/vadrer/python-perl>.
 Bug reports, suggestions and questions about this stuff are welcome there.
 
 Copyright

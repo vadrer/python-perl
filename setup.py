@@ -126,10 +126,6 @@ if sys.platform == 'win32':
     sym_extra.append('sv2pyo')
     sym_extra.append('pyo2sv')
 
-if 0: # я привнёс, похоже что зря...
-    lib_dirs.append('Python-Object\\blib\\arch\\auto\\Python\\Object')  # Python::Object
-    libs.append('Object')  # Python::Object
-
 if DEBUG:
     print("Macros:", macros)
     print("Include: ", include_dirs)
