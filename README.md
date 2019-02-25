@@ -35,9 +35,11 @@ reference the versions of the language interpreters that you want to use.
 
     - for `Python::Object` perl module:
 
-	  ```cd Python-Object
+	  ```
+          cd Python-Object
 	  perl Makefile.PL
-	  make install```
+	  make install
+          ```
 
 - You should now be able to run the test.py test script.
 
