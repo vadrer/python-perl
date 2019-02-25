@@ -4,8 +4,6 @@ import perl
 #    raise SystemExit
 
 print("1..13")
-print(perl.eval(""" join '+','a'..'z' """))
-print("2..13")
 
 def ok(a, b=None):
     return "a=" + str(a) + ", b=" + str(b)
@@ -15,11 +13,6 @@ f = perl.eval("""
                           use blib "D:/vad/perl-dev/python/pyperl3-1.0/Python-Object/blib";
 use Python qw(apply);
 use strict;
-
-=ignore
-print " here: ",( map {"$_\\n"} sort keys %::Python::),"\n";
-print " here2: ",( map {"$_\\n"} sort keys %::Python::Object::),"\n";
-=cut
 
 print STDERR "b4 dict\\n";
 my $d = Python::dict(foo=>42);
@@ -31,7 +24,7 @@ my $ok = sub { print STDERR "[[@_]]\\n"; return "a=$_[0], b=$_[1]" };
 
 sub {
     my $f = shift;
-print STDERR "xxxxx{f=$f}\\n";
+    print STDERR "xxxxx{f=$f}\\n";
 
     eval{Python::PyEval_CallObjectWithKeywords($f);};print "{{$@}}\\n";
 
@@ -133,21 +126,8 @@ print STDERR "xxxxx{f=$f}\\n";
     'retto';
 
 };
-#join '',('a'..'z')x5;
-#(1,1,2,3,4,'z','a'..'b');
-#sub{5};
 """)
 
-print(123);
 print('f=',f)
-#print('f()=',f())
-
-print(124);
 print('f(ok)=', f(ok))
-print(125);
-#print 'ohhohh;';
-#print perl.call(f,'ok')
-#print 'ohhohh2;';
-#print f('ok')
-#print 'ohhohh3;';
 
