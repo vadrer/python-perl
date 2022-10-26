@@ -2,13 +2,19 @@ use ExtUtils::MakeMaker;
 
 # perl -MPortable -w Makefile.PL
 
-chomp(my $pyinc = `python ./pyinc.py`);
-print "Picking up pyton include files from \"$pyinc\"\n";
+my $python = $ENV{PYTHON} || 'python'; # 'python3.9'
+chomp(my $pyinc = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('INCLUDEPY'))"`);
+chomp(my $pylib = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('BLDLIBRARY'))"`);
+chomp(my $pysitelib = `$python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))"`);
+
+print "pyinc=$pyinc\n";
 
 my @define;
 my @libs;
 
 #push(@define, "MULTI_PERL"); # if 1 and -f "../MULTI_PERL";
+
+push(@libs, $pylib);
 
 #if (-f "../BOOT_FROM_PERL") {
 #    push(@define, "BOOT_FROM_PERL");
@@ -29,6 +35,7 @@ my @libs;
 my @c = qw(lang_map svrv_object perlmodule lang_lock perlxsi try_perlapi);            # thrd_ctx 
 
 if ($^O eq 'MSWin32') {
+    @libs = ('-lpython2.7.dll');
     my @pl = (
 	# candidates where py lib located, eg [...]\\..\\libs\\libpython36.a
 	"$pyinc\\..\\libs\\libpython*.a", 
@@ -50,9 +57,9 @@ if ($#libs>-1) {
 }
 
 sub MY::postamble {
-    return join '', map {<<"EOS"} @c;
+    return join '', map {my $lang=$_ eq 'svrv_object'? '-x c++' : ''; <<"EOS"} @c;
 $_\$(OBJ_EXT) : ../$_.c
-	\$(CCCMD) \$(CCCDLFLAGS) "-I\$(PERL_INC)" \$(PASTHRU_DEFINE) \$(DEFINE) ../$_.c
+	\$(CCCMD) \$(CCCDLFLAGS) "-I\$(PERL_INC)" \$(PASTHRU_DEFINE) $lang \$(DEFINE) ../$_.c
 EOS
 }
 
