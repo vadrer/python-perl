@@ -803,12 +803,13 @@ static struct PyModuleDef moduledef = {
 
 PyMODINIT_FUNC
 PyInit_perl (void) {
-    //printf("hello, I'm py3\n");
-#if 1
+    printf("hello, I'm py3\n");
+#if 0
     PerlInterpreter *main_perl = new_perl();
+    printf("1, I'm py3\n");
 #else
-    char *embedding[] = { "", "-mPython::Object", "-e", "0" };
-    //char *embedding[] = { "", "-e", "print 'a'..'zz',qq/\\n/;", NULL };
+    //char *embedding[] = { "", "-mPython::Object", "-e", "0" };
+    char *embedding[] = { "", "-e", "print 'a'..'zz',qq/\\n/;", NULL };
     PERL_SYS_INIT(0,0);
     PerlInterpreter *main_perl = perl_alloc();
     perl_construct(main_perl);

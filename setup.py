@@ -8,7 +8,8 @@
 from distutils.core import setup, Extension
 
 DEBUG = 1
-perl = 'perl -MPortable'
+perl = 'perl'
+#perl = 'perl -MPortable'
 
 import sys, os
 from os      import popen, system, access, F_OK
@@ -17,6 +18,8 @@ from sys     import exit
 
 MULTI_PERL = isfile("MULTI_PERL")
 BOOT_FROM_PERL = isfile("BOOT_FROM_PERL")
+# TODO: not BOOT_FROM_PERL
+BOOT_FROM_PERL = 1
 
 p = popen(perl + ' ./opts.pl')
 perl_ccopts = p.readline()
@@ -68,6 +71,7 @@ sources = ['perlmodule.c',
            'try_perlapi.c',
           ]
 #o_extra.append('Python-Object/Object.o')
+sources.append('perlxsi.c');
 
 if BOOT_FROM_PERL:
     cc_extra.append("-DBOOT_FROM_PERL")
@@ -103,7 +107,7 @@ else:
         ext_name = "perl2"
         cc_extra.append("-DDL_HACK")
         extra_ext.append(Extension(name = "perl",
-                                   sources = ["dlhack.c"],
+                                   sources = sources, # ["dlhack.c"],
                                    libraries = ["dl"],
                                    ))
         
@@ -119,8 +123,7 @@ if not isfile("try_perlapi.c") or \
 if sys.platform == 'win32':
     libs.append('perl526')
     for x in ['15','16','20','27','36']:
-        if access(os.path.join(sys.prefix, 'libs', 'python'+x+'.lib'), \
-                  F_OK) == 1 :
+        if access(os.path.join(sys.prefix, 'libs', 'python'+x+'.lib'), F_OK) == 1 :
             libs.append('python'+x)
     #sym_extra.append('get_thread_ctx')
     sym_extra.append('sv2pyo')

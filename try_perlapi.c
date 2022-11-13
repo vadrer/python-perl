@@ -11,41 +11,356 @@
 #include "perlmodule.h"
 #include "lang_lock.h"
 #include "thrd_ctx.h"
+
+static LOGOP dummy_op;
+
+void fake_inittry()
+{
+    Zero(&dummy_op, 1, LOGOP);
+    dummy_op.op_flags |= OPf_WANT_SCALAR;
+    dummy_op.op_next = Nullop;
+}
+
+struct block_old {
+    U8		blku_type;	/* what kind of context this is */
+    U8		blku_gimme;	/* is this block running in list context? */
+    U16		blku_u16;	/* used by block_sub and block_eval (so far) */
+    I32		blku_oldsp;	/* stack pointer to copy stuff down to */
+    COP *	blku_oldcop;	/* old curcop pointer */
+    I32		blku_oldmarksp;	/* mark stack index */
+    I32		blku_oldscopesp;	/* scope stack index */
+    PMOP *	blku_oldpm;	/* values of pattern match vars */
+
+    union {
+	struct block_sub	blku_sub;
+	struct block_format	blku_format;
+	struct block_eval	blku_eval;
+	struct block_loop	blku_loop;
+	struct block_givwhen	blku_givwhen;
+    } blk_u;
+};
+#define blk_oldsp	cx_u.cx_blk.blku_oldsp
+#define blk_oldcop	cx_u.cx_blk.blku_oldcop
+#define blk_oldmarksp	cx_u.cx_blk.blku_oldmarksp
+#define blk_oldscopesp	cx_u.cx_blk.blku_oldscopesp
+#define blk_oldpm	cx_u.cx_blk.blku_oldpm
+#define blk_gimme	cx_u.cx_blk.blku_gimme
+#define blk_u16		cx_u.cx_blk.blku_u16
+#define blk_sub		cx_u.cx_blk.blk_u.blku_sub
+#define blk_format	cx_u.cx_blk.blk_u.blku_format
+#define blk_eval	cx_u.cx_blk.blk_u.blku_eval
+#define blk_loop	cx_u.cx_blk.blk_u.blku_loop
+#define blk_givwhen	cx_u.cx_blk.blk_u.blku_givwhen
+
+#define DEBUG_CX(action)						\
+    DEBUG_l(								\
+	Perl_deb(aTHX_ "CX %ld %s %s (scope %ld,%ld) at %s:%d\n",	\
+		    (long)cxstack_ix,					\
+		    action,						\
+		    PL_block_type[CxTYPE(&cxstack[cxstack_ix])],	\
+		    (long)PL_scopestack_ix,				\
+		    (long)(cxstack[cxstack_ix].blk_oldscopesp),		\
+		    __FILE__, __LINE__));
+
+/* Enter a block. */
+#define PUSHBLOCK(cx,t,sp) CXINC, cx = &cxstack[cxstack_ix],		\
+	cx->cx_type		= t,					\
+	cx->blk_oldsp		= sp - PL_stack_base,			\
+	cx->blk_oldcop		= PL_curcop,				\
+	cx->blk_oldmarksp	= PL_markstack_ptr - PL_markstack,	\
+	cx->blk_oldscopesp	= PL_scopestack_ix,			\
+	cx->blk_oldpm		= PL_curpm,				\
+	cx->blk_gimme		= (U8)gimme;				\
+	DEBUG_CX("PUSH");
+
+/* Exit a block (RETURN and LAST). */
+#define POPBLOCK(cx,pm)							\
+	DEBUG_CX("POP");						\
+	cx = &cxstack[cxstack_ix--],					\
+	newsp		 = PL_stack_base + cx->blk_oldsp,		\
+	PL_curcop	 = cx->blk_oldcop,				\
+	PL_markstack_ptr = PL_markstack + cx->blk_oldmarksp,		\
+	PL_scopestack_ix = cx->blk_oldscopesp,				\
+	pm		 = cx->blk_oldpm,				\
+	gimme		 = cx->blk_gimme;
+
+/* If we ever need more than 512 op types, change the shift from 7.
+   blku_gimme is actually also only 2 bits, so could be merged with something.
+*/
+
+#define CxOLD_IN_EVAL(cx)	(((cx)->blk_u16) & 0x7F)
+#define CxOLD_OP_TYPE(cx)	(((cx)->blk_u16) >> 7)
+
+#define PUSHEVAL(cx,n)							\
+    STMT_START {							\
+	assert(!(PL_in_eval & ~0x7F));					\
+	assert(!(PL_op->op_type & ~0x1FF));				\
+	cx->blk_u16 = (PL_in_eval & 0x7F) | ((U16)PL_op->op_type << 7);	\
+	cx->blk_eval.old_namesv = (n ? newSVpv(n,0) : NULL);		\
+	cx->blk_eval.old_eval_root = PL_eval_root;			\
+	cx->blk_eval.cur_text = PL_parser ? PL_parser->linestr : NULL;	\
+	cx->blk_eval.cv = NULL; /* set by doeval(), as applicable */	\
+	cx->blk_eval.retop = NULL;					\
+	cx->blk_eval.cur_top_env = PL_top_env; 				\
+    } STMT_END
+
+#define POPEVAL(cx)							\
+    STMT_START {							\
+	PL_in_eval = CxOLD_IN_EVAL(cx);					\
+	optype = CxOLD_OP_TYPE(cx);					\
+	PL_eval_root = cx->blk_eval.old_eval_root;			\
+	if (cx->blk_eval.cur_text && SvSCREAM(cx->blk_eval.cur_text))	\
+	    SvREFCNT_dec_NN(cx->blk_eval.cur_text);			\
+	if (cx->blk_eval.old_namesv)					\
+	    sv_2mortal(cx->blk_eval.old_namesv);			\
+    } STMT_END
+
+
+#ifdef OOOOOOOOOOOOOOOLD
+
+/* context common to subroutines, evals and loops */
+struct block_oold {
+    I32		blku_oldsp;	/* stack pointer to copy stuff down to */
+    COP *	blku_oldcop;	/* old curcop pointer */
+    I32		blku_oldretsp;	/* return stack index */
+    I32		blku_oldmarksp;	/* mark stack index */
+    I32		blku_oldscopesp;	/* scope stack index */
+    PMOP *	blku_oldpm;	/* values of pattern match vars */
+    U8		blku_gimme;	/* is this block running in list context? */
+
+    union {
+	struct block_sub	blku_sub;
+	struct block_eval	blku_eval;
+	struct block_loop	blku_loop;
+    } blk_u;
+};
+
+
+#define blk_oldsp	cx_u.cx_blk.blku_oldsp
+#define blk_oldcop	cx_u.cx_blk.blku_oldcop
+#define blk_oldretsp	cx_u.cx_blk.blku_oldretsp
+#define blk_oldmarksp	cx_u.cx_blk.blku_oldmarksp
+#define blk_oldscopesp	cx_u.cx_blk.blku_oldscopesp
+#define blk_oldpm	cx_u.cx_blk.blku_oldpm
+#define blk_gimme	cx_u.cx_blk.blku_gimme
+#define blk_sub		cx_u.cx_blk.blk_u.blku_sub
+#define blk_eval	cx_u.cx_blk.blk_u.blku_eval
+#define blk_loop	cx_u.cx_blk.blk_u.blku_loop
+/* Enter a block. */
+#define PUSHBLOCK(cx,t,sp) CXINC, cx = &cxstack[cxstack_ix],		\
+	cx->cx_type		= t,					\
+	cx->blk_oldsp		= sp - PL_stack_base,			\
+	cx->blk_oldcop		= PL_curcop,				\
+	cx->blk_oldmarksp	= PL_markstack_ptr - PL_markstack,	\
+	cx->blk_oldscopesp	= PL_scopestack_ix,			\
+	cx->blk_oldretsp	= PL_retstack_ix,			\
+	cx->blk_oldpm		= PL_curpm,				\
+	cx->blk_gimme		= (U8)gimme;				\
+	DEBUG_l( PerlIO_printf(Perl_debug_log, "Entering block %ld, type %s\n",	\
+		    (long)cxstack_ix, PL_block_type[CxTYPE(cx)]); )
+
+/* Exit a block (RETURN and LAST). */
+#define POPBLOCK(cx,pm) cx = &cxstack[cxstack_ix--],			\
+	newsp		 = PL_stack_base + cx->blk_oldsp,		\
+	PL_curcop	 = cx->blk_oldcop,				\
+	PL_markstack_ptr = PL_markstack + cx->blk_oldmarksp,		\
+	PL_scopestack_ix = cx->blk_oldscopesp,				\
+	PL_retstack_ix	 = cx->blk_oldretsp,				\
+	pm		 = cx->blk_oldpm,				\
+	gimme		 = cx->blk_gimme;				\
+	DEBUG_SCOPE("POPBLOCK");					\
+	DEBUG_l( PerlIO_printf(Perl_debug_log, "Leaving block %ld, type %s\n",		\
+		    (long)cxstack_ix+1,PL_block_type[CxTYPE(cx)]); )
+#endif
+
+void pop_return() {
+printf("pop_return\n");
+}
+void push_return(OP *) {
+printf("push_return\n");
+}
+static void
+fake_entertry()
+{
+    PERL_CONTEXT *cx;
+    I32 gimme;
+    dCTXP;
+
+    PL_op = (OP*)&dummy_op;
+    gimme = GIMME_V;
+
+    ENTER;
+    SAVETMPS;
+
+    push_return(Nullop);
+    PUSHBLOCK(cx, (CXt_EVAL|CXp_TRYBLOCK), PL_stack_sp);
+    //PUSHEVAL(cx, 0, 0);
+    PUSHEVAL(cx, 0);
+    PL_eval_root = PL_op;
+    PL_in_eval = EVAL_INEVAL;
+    sv_setpvn(ERRSV, "", 0);
+}
+
+static void
+fake_leavetry(I32 oldscope)
+{
+    dCTXP;
+    if (PL_scopestack_ix > oldscope) {
+        PERL_CONTEXT *cx;
+        PMOP *newpm;
+        I32 optype;
+        SV **newsp;
+        I32 gimme;
+
+        POPBLOCK(cx,newpm);
+        POPEVAL(cx);
+        pop_return();
+        PL_curpm = newpm;
+    }
+
+    FREETMPS;
+    LEAVE;
+}
+
 int
 try_array_len(AV* av)
 {
+    dJMPENV;
     dCTXP;
+    int jmp_status;
+    volatile I32 oldscope = PL_scopestack_ix;
     int RETVAL;
+
+    ASSERT_LOCK_PERL;
+    fake_entertry();
+
+    JMPENV_PUSH(jmp_status);
+    if (jmp_status == 0) {
+
         RETVAL = av_len(av)+1;
+
+    }
+    else if (jmp_status == 3) {
+        /* caught an exception, $@ should be set */
+        assert(SvTRUE(ERRSV));
+        PYTHON_LOCK;
+        propagate_errsv();
+        PYTHON_UNLOCK;
+
+        RETVAL = -1;
+    }
+    else {
+        fprintf(stderr, "should not happen, jmp_status = %d\n", jmp_status);
+    }
+    JMPENV_POP;
+    fake_leavetry(oldscope);
     return RETVAL;
 }
 
 SV**
 try_av_fetch(AV* av, I32 key, I32 lval)
 {
+    dJMPENV;
     dCTXP;
+    int jmp_status;
+    volatile I32 oldscope = PL_scopestack_ix;
     SV** RETVAL;
+
+    ASSERT_LOCK_PERL;
+    fake_entertry();
+
+    JMPENV_PUSH(jmp_status);
+    if (jmp_status == 0) {
+
         RETVAL = av_fetch(av, key, lval);
+
+    }
+    else if (jmp_status == 3) {
+        /* caught an exception, $@ should be set */
+        assert(SvTRUE(ERRSV));
+        PYTHON_LOCK;
+        propagate_errsv();
+        PYTHON_UNLOCK;
+
+        RETVAL = NULL;
+    }
+    else {
+        fprintf(stderr, "should not happen, jmp_status = %d\n", jmp_status);
+    }
+    JMPENV_POP;
+    fake_leavetry(oldscope);
     return RETVAL;
 }
 
 int
 try_SvGETMAGIC(SV* sv)
 {
+    dJMPENV;
     dCTXP;
+    int jmp_status;
+    volatile I32 oldscope = PL_scopestack_ix;
     int RETVAL;
+
+    ASSERT_LOCK_PERL;
+    fake_entertry();
+
+    JMPENV_PUSH(jmp_status);
+    if (jmp_status == 0) {
+
         SvGETMAGIC(sv);
         RETVAL = 0;
+
+    }
+    else if (jmp_status == 3) {
+        /* caught an exception, $@ should be set */
+        assert(SvTRUE(ERRSV));
+        PYTHON_LOCK;
+        propagate_errsv();
+        PYTHON_UNLOCK;
+
+        RETVAL = -1;
+    }
+    else {
+        fprintf(stderr, "should not happen, jmp_status = %d\n", jmp_status);
+    }
+    JMPENV_POP;
+    fake_leavetry(oldscope);
     return RETVAL;
 }
 
 int
 try_SvSETMAGIC(SV* sv)
 {
+    dJMPENV;
     dCTXP;
+    int jmp_status;
+    volatile I32 oldscope = PL_scopestack_ix;
     int RETVAL;
+
+    ASSERT_LOCK_PERL;
+    fake_entertry();
+
+    JMPENV_PUSH(jmp_status);
+    if (jmp_status == 0) {
+
         SvSETMAGIC(sv);
         RETVAL = 0;
+
+    }
+    else if (jmp_status == 3) {
+        /* caught an exception, $@ should be set */
+        assert(SvTRUE(ERRSV));
+        PYTHON_LOCK;
+        propagate_errsv();
+        PYTHON_UNLOCK;
+
+        RETVAL = -1;
+    }
+    else {
+        fprintf(stderr, "should not happen, jmp_status = %d\n", jmp_status);
+    }
+    JMPENV_POP;
+    fake_leavetry(oldscope);
     return RETVAL;
 }
 

@@ -33,6 +33,9 @@ typedef int(*intintobjargproc)(PyObject *, int, int, PyObject *);
 typedef PyObject NewPyObject;
 typedef PyObject NewPyObjectX;
 
+#ifndef WIN32
+#define __declspec(x)
+#endif
 extern __declspec(dllimport) PyObject * PyObject_Str(PyObject *);
 
 
@@ -52,8 +55,11 @@ magic_free_pyo(pTHX_ SV *sv, MAGIC *mg)
     return 0;
 }
 
+#ifndef THIS_WILL_BE_BETTER
 extern MGVTBL vtbl_free_pyo;
-/*MGVTBL vtbl_free_pyo = {0, 0, 0, 0, magic_free_pyo};*/
+#else
+MGVTBL vtbl_free_pyo = {0, 0, 0, 0, magic_free_pyo};
+#endif
 
 SV*
 newPerlPyObject_noinc(PyObject *pyo)

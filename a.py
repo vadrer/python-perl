@@ -1,3 +1,8 @@
+
+# to allow executing when the "perl" module isn't installed yet by setup.py ... install:
+import sys
+sys.path.append('build/lib.linux-x86_64-3.10')
+
 import perl
 #if (perl.MULTI_PERL):
 #    print "1..0"
@@ -9,13 +14,13 @@ def ok(a, b=None):
     return "a=" + str(a) + ", b=" + str(b)
 
 f = perl.eval("""
-        #BEGIN{push @INC, 'd:\\vad\\perl-dev\\python\\pyperl3-1.0\\Python-Object\\blib\\lib'; }
-                          use blib "D:/vad/perl-dev/python/pyperl3-1.0/Python-Object/blib";
+use blib 'Python-Object/blib';
 use Python qw(apply);
 use strict;
 
+BEGIN{print "foo\n";}
 print STDERR "b4 dict\\n";
-my $d = Python::dict(foo=>42);
+my $d = Python::dict(foo=>42) if 0;
 print STDERR "a4 dict\\n";
 
 $| = 1;
@@ -121,7 +126,7 @@ sub {
     $res = apply($f, [], Python::dict(a => 101));
     #print "$res\\n";
     print "not " unless $res eq "a=101, b=None";
-    print "ok 14\n";
+    print "ok 14\\n";
 
     'retto';
 

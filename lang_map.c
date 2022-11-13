@@ -28,6 +28,8 @@
 #define PyArg_NoArgs(v)		PyArg_Parse(v, "")
 typedef PyObject *(*intargfunc)(PyObject *, int) Py_DEPRECATED(2.5);
 typedef int(*intintobjargproc)(PyObject *, int, int, PyObject *);
+#else
+#error "WTF!"
 #endif
 
 #ifdef WIN32_NOT
