@@ -35,17 +35,21 @@ push @libs, "-l" . ($pylib=~s/^-l//r); # for some reason cygwin/msys python retu
 
 my @c = qw(lang_map svrv_object perlmodule lang_lock perlxsi try_perlapi);            # thrd_ctx 
 
-if ($^O eq 'MSWin32') {
-    @libs = ('-lpython2.7.dll');
+if ($pylib eq 'None') {
+    # usually on $^O eq MSWin32
+    chomp(my $pref = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('prefix'))"`);
+    chomp(my $pyver = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('VERSION'))"`);
     my @pl = (
 	# candidates where py lib located, eg [...]\\..\\libs\\libpython36.a
-	"$pyinc\\..\\libs\\libpython*.a", 
-	"$pyinc\\..\\libs\\python*.lib",
+	#"$pyinc\\..\\libs\\libpython*.a",
+	#"$pyinc\\..\\libs\\python*.lib",
+	"$pref/libs/python*.lib",
     );
     my $pylib = [(grep{-f} map {glob($_)} @pl),'?']->[0];
     if ($pylib eq '?') {die "can not find lib in @pl"}
 
-    push @libs, "\"$pylib\"";
+    @libs = ("\"$pylib\"");
+    @libs = ("-L$pref/libs -lpython$pyver.lib");
 } else {
     s/\.a$//, s/-llib/-l/ for @libs; ###WHY cygwin/msys does not undesrtand this? TODO: research @ SO
 }
