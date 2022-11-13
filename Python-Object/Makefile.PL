@@ -1,6 +1,5 @@
+use strict;
 use ExtUtils::MakeMaker;
-
-# perl -MPortable -w Makefile.PL
 
 my $python = $ENV{PYTHON} || 'python';
 chomp(my $pyinc = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('INCLUDEPY'))"`);
@@ -16,7 +15,7 @@ my @libs;
 
 #push(@define, "MULTI_PERL"); # if 1 and -f "../MULTI_PERL";
 
-push(@libs, ($^O eq 'cygwin'? "-l" : "") . $pylib);
+push @libs, "-l$pylib";
 
 #if (-f "../BOOT_FROM_PERL") {
 #    push(@define, "BOOT_FROM_PERL");
@@ -36,10 +35,7 @@ push(@libs, ($^O eq 'cygwin'? "-l" : "") . $pylib);
 
 my @c = qw(lang_map svrv_object perlmodule lang_lock perlxsi try_perlapi);            # thrd_ctx 
 
-if ($^O eq 'linux') {
-} elsif ($^O eq 'cygwin') {
-    s/\.a$//, s/-llib/-l/ for @libs; ###WHY cygwin does not undesrtand this? TODO: researc @ SO
-} elsif ($^O eq 'MSWin32') {
+if ($^O eq 'MSWin32') {
     @libs = ('-lpython2.7.dll');
     my @pl = (
 	# candidates where py lib located, eg [...]\\..\\libs\\libpython36.a
@@ -50,17 +46,10 @@ if ($^O eq 'linux') {
     if ($pylib eq '?') {die "can not find lib in @pl"}
 
     push @libs, "\"$pylib\"";
+} else {
+    s/\.a$//, s/-llib/-l/ for @libs; ###WHY cygwin/msys does not undesrtand this? TODO: research @ SO
 }
 
-push @extra, FUNCLIST => [qw(boot_Python__Object newPerlPyObject_noinc newPerlPyObject_inc)];
-push @extra, OBJECT => join ' ', 'Object.o', map {"$_.o"} @c;
-
-if (@define) {
-    push(@extra, DEFINE => join(" ", map "-D$_", @define));
-}
-if ($#libs>-1) {
-    push(@extra, LIBS => \@libs);
-}
 
 sub MY::postamble {
     return join '', map {my $lang=$_ eq 'svrv_object'? '-x c++' : ''; <<"EOS"} @c;
@@ -73,7 +62,9 @@ WriteMakefile(
     NAME	 => 'Python::Object',
     VERSION_FROM => 'Object.pm',
     INC          => "-I\"$pyinc\" -I.. ",
-    # nope; CCFLAGS       => "-fleading-underscore",
-    @extra,
+    OBJECT       => join(' ', 'Object.o', map {"$_.o"} @c),
+    FUNCLIST     => [qw(boot_Python__Object newPerlPyObject_noinc newPerlPyObject_inc)],
+    LIBS         => \@libs,
+    DEFINE       => join(" ", map "-D$_", @define),
     dist         => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
 );
