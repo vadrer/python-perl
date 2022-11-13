@@ -15,7 +15,7 @@ my @libs;
 
 #push(@define, "MULTI_PERL"); # if 1 and -f "../MULTI_PERL";
 
-push @libs, "-l$pylib";
+push @libs, "-l" . ($pylib=~s/^-l//r); # for some reason cygwin/msys python return w/o -l, linux one with -l
 
 #if (-f "../BOOT_FROM_PERL") {
 #    push(@define, "BOOT_FROM_PERL");
