@@ -16,7 +16,7 @@ my @libs;
 
 #push(@define, "MULTI_PERL"); # if 1 and -f "../MULTI_PERL";
 
-push(@libs, $pylib);
+push(@libs, ($^O eq 'cygwin'? "-l" : "") . $pylib);
 
 #if (-f "../BOOT_FROM_PERL") {
 #    push(@define, "BOOT_FROM_PERL");
@@ -37,6 +37,8 @@ push(@libs, $pylib);
 my @c = qw(lang_map svrv_object perlmodule lang_lock perlxsi try_perlapi);            # thrd_ctx 
 
 if ($^O eq 'linux') {
+} elsif ($^O eq 'cygwin') {
+    s/\.a$//, s/-llib/-l/ for @libs; ###WHY cygwin does not undesrtand this? TODO: researc @ SO
 } elsif ($^O eq 'MSWin32') {
     @libs = ('-lpython2.7.dll');
     my @pl = (
@@ -48,9 +50,10 @@ if ($^O eq 'linux') {
     if ($pylib eq '?') {die "can not find lib in @pl"}
 
     push @libs, "\"$pylib\"";
-    push @extra, FUNCLIST => [qw(boot_Python__Object newPerlPyObject_noinc newPerlPyObject_inc)];
-    push @extra, OBJECT => join ' ', 'Object.o', map {"$_.o"} @c;
 }
+
+push @extra, FUNCLIST => [qw(boot_Python__Object newPerlPyObject_noinc newPerlPyObject_inc)];
+push @extra, OBJECT => join ' ', 'Object.o', map {"$_.o"} @c;
 
 if (@define) {
     push(@extra, DEFINE => join(" ", map "-D$_", @define));

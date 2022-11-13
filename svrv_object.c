@@ -2034,7 +2034,7 @@ static PyNumberMethods pysvrv_as_number = {
 };
 
 static PyMappingMethods pysvrv_as_mapping = {
-    (inquiry)pysvrv_length, /* mp_length */
+    (lenfunc)pysvrv_length, /* mp_length */
     (binaryfunc)pysvrv_subscript, /* mp_subscript */
     (objobjargproc)pysvrv_ass_sub, /* mp_ass_subscript */
 };
