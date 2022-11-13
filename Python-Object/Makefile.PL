@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 # perl -MPortable -w Makefile.PL
 
-my $python = $ENV{PYTHON} || 'python3.10'; # '~/vad/py-dev/Python-3.8.5-cyg/python.exe';
+my $python = $ENV{PYTHON} || 'python';
 chomp(my $pyinc = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('INCLUDEPY'))"`);
 chomp(my $pylib = `$python -c "from distutils.sysconfig import get_config_var; print(get_config_var('BLDLIBRARY'))"`);
 chomp(my $pysitelib = `$python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))"`);
